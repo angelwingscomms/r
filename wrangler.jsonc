@@ -10,7 +10,7 @@
 	"migrations": [
 		{
 			"new_sqlite_classes": ["R"],
-			"tag": "v1",
+			"tag": "v2",
 		},
 	],
 	"durable_objects": {
