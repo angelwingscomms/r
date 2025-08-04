@@ -5,10 +5,17 @@ export interface Env {
 }
 
 export class R extends DurableObject<Env> {
-	sessions: WebSocket[];
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
-		this.sessions = [];
+		this.ctx = ctx
+	}
+
+	async send(data: object) {
+		console.log(this.ctx.getWebSockets())
+		this.ctx.getWebSockets().forEach((ws) => {
+			console.log('sending to', ws);
+			ws.send(JSON.stringify(data));
+		});
 	}
 
 	async fetch(request: Request) {
@@ -16,7 +23,6 @@ export class R extends DurableObject<Env> {
 		const [client, server] = Object.values(pair);
 
 		this.ctx.acceptWebSocket(server);
-		this.sessions.push(server);
 
 		return new Response(null, {
 			status: 101,
@@ -25,28 +31,29 @@ export class R extends DurableObject<Env> {
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
-		console.log('message', message)
-		console.log('sessions', this.sessions)
-		this.sessions.forEach((ws) => {
+		this.ctx.getWebSockets().forEach((ws) => {
 			ws.send(message);
 		});
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
-		this.sessions = this.sessions.filter((session) => session !== ws);
 		ws.close(code, 'Durable Object is closing WebSocket');
 	}
 }
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		if (request.headers.get('Upgrade') !== "websocket") {
-			return new Response("Durable object expected header - Upgrade: websocket", {
-				status: 426
-			})
+		let path = new URL(request.url).pathname;
+		if (path.startsWith('/send')) {
+			let name = path.split('/send/')[1];
+			let id = env.R.idFromName(name);
+			let r = env.R.get(id);
+			await r.send(await request.json());
+			return new Response();
+		} else {
+			let id = env.R.idFromName(path.slice(1));
+			let r = env.R.get(id);
+			return r.fetch(request);
 		}
-		let id = env.R.idFromName(new URL(request.url).pathname)
-		let r = env.R.get(id)
-		return r.fetch(request)
 	},
 };
