@@ -6,11 +6,10 @@ export class R extends DurableObject<Env> {
 		this.ctx = ctx;
 	}
 
-	async send(data: object) {
+	async send(message: string) {
 		console.log(this.ctx.getWebSockets());
 		this.ctx.getWebSockets().forEach((ws) => {
-			console.log('sending to', ws);
-			ws.send(JSON.stringify(data));
+			ws.send(message);
 		});
 	}
 
@@ -40,11 +39,11 @@ export class R extends DurableObject<Env> {
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		let path = new URL(request.url).pathname;
-		if (path.startsWith('/send')) {
+		if (path.startsWith('/send/')) {
 			let name = path.split('/send/')[1];
 			let id = env.R.idFromName(name);
 			let r = env.R.get(id);
-			await r.send(await request.json());
+			await r.send(await request.text());
 			return new Response();
 		} else {
 			let id = env.R.idFromName(path.slice(1));
