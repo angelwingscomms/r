@@ -30,63 +30,6 @@ export class R extends DurableObject<Env> {
 		this.ctx.getWebSockets().forEach((ws) => {
 			ws.send(body);
 		});
-		try {
-			let dataString: string;
-			if (typeof body === 'string') {
-				dataString = body;
-			} else {
-				dataString = new TextDecoder().decode(body);
-			}
-			const data = JSON.parse(dataString);
-			try {
-				const response = await fetch(this.env.i, {
-					method: 'POST',
-					body,
-				});
-
-				if (!response.ok) {
-					let respText: string | undefined;
-					try {
-						respText = await response.text();
-					} catch (_e) {
-						respText = undefined;
-					}
-					const info = {
-						error: 'HTTP error',
-						status: response.status,
-						statusText: response.statusText,
-						request: {
-							method: 'POST',
-							url: this.env?.i,
-							rawBody: typeof body === 'string' ? body : '[ArrayBuffer]',
-							dataString,
-							data,
-						},
-						response: {
-							ok: response.ok,
-							status: response.status,
-							statusText: response.statusText,
-							headers: Object.fromEntries(response.headers.entries()),
-							bodyText: respText,
-						},
-					};
-					throw new Error(JSON.stringify(info, null, 2));
-				}
-			} catch (e) {
-				if (e instanceof Error) {
-					console.error('r message save:', e.message, {
-						name: e.name,
-						stack: e.stack,
-						cause: (e as any).cause,
-					});
-				} else {
-					console.error('r message save: Non-Error thrown value', e);
-				}
-			}
-		} catch (e) {
-			// This will now catch both JSON parsing errors and fetch-related errors
-			console.error('An error occurred:', e.message);
-		}
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
