@@ -21,7 +21,7 @@ export class R extends DurableObject<Env> {
 
 		return new Response(null, {
 			status: 101,
-			webSocket: client,
+			webSocket: client
 		});
 	}
 
@@ -38,17 +38,24 @@ export class R extends DurableObject<Env> {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		let path = new URL(request.url).pathname;
-		if (path.startsWith('/send/')) {
-			let name = path.split('/send/')[1];
-			let id = env.R.idFromName(name);
-			let r = env.R.get(id);
-			await r.send(await request.text());
-			return new Response();
-		} else {
-			let id = env.R.idFromName(path.slice(1));
-			let r = env.R.get(id);
-			return r.fetch(request);
+		let path = new URL(request.url).pathname.split('/');
+		switch (path[1]) {
+			case 'send': {
+				let id = env.R.idFromName(path[2]);
+				let r = env.R.get(id);
+				await r.send(await request.text());
+				return new Response();
+				break;
+			}
+			case 'i': {
+				return new Response(env.R.newUniqueId().toString());
+				break;
+			}
+			default: {
+				let id = env.R.idFromName(path[1].slice(1));
+				let r = env.R.get(id);
+				return r.fetch(request);
+			}
 		}
-	},
+	}
 };

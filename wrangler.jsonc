@@ -13,13 +13,19 @@
 			"tag": "v1",
 		},
 	],
+	"services": [
+		{
+			"binding": "i",
+			"service": "i",
+		},
+	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"class_name": "R",
-				"name": "R"
-			}
-		]
+				"name": "R",
+			},
+		],
 	},
 	"observability": {
 		"enabled": true,
