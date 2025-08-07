@@ -1,5 +1,19 @@
 import { DurableObject } from 'cloudflare:workers';
 
+const key = async (env: Env) => {
+	// Ensure AES-GCM key length is valid (16, 24, or 32 bytes). Use SHA-256 to derive 32 bytes.
+	const material = new TextEncoder().encode(env.s ?? '');
+	const hash = await crypto.subtle.digest('SHA-256', material);
+	return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+};
+
+export const decrypt = async (env: Env, sB64: string, ivB64: string): Promise<string> => {
+	const sBytes = Uint8Array.from(atob(sB64), (c) => c.charCodeAt(0));
+	const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0));
+	const d = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, await key(env), sBytes);
+	return new TextDecoder().decode(new Uint8Array(d));
+};
+
 export class R extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -38,7 +52,17 @@ export class R extends DurableObject<Env> {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		let path = new URL(request.url).pathname.split('/');
+		const url = new URL(request.url);
+		const material = new TextEncoder().encode(env.s ?? '');
+		const hash = await crypto.subtle.digest('SHA-256', material);
+		const key = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+		const exp = await decrypt(env, url.searchParams.get('s') ?? '', url.searchParams.get('iv') ?? '');
+		console.log('exp', exp);
+		if (Date.now() > +exp) {
+			return new Response('expired s', { status: 401 });
+		}
+
+		let path = url.pathname.split('/');
 		switch (path[1]) {
 			case 'send': {
 				let id = env.R.idFromName(path[2]);
