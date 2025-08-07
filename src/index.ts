@@ -57,6 +57,7 @@ export default {
 		const hash = await crypto.subtle.digest('SHA-256', material);
 		const key = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 		const exp = await decrypt(env, url.searchParams.get('s') ?? '', url.searchParams.get('iv') ?? '');
+		console.log('exp', exp)
 		if (Date.now() > +exp) {
 			return new Response('expired s', { status: 401 });
 		}
@@ -64,7 +65,7 @@ export default {
 		let path = url.pathname.split('/');
 		switch (path[1]) {
 			case 'send': {
-				let id = env.R.idFromName(path[2]);
+				let id = env.R.idFromString(path[2]);
 				let r = env.R.get(id);
 				await r.send(await request.text());
 				return new Response();
@@ -75,7 +76,7 @@ export default {
 				break;
 			}
 			default: {
-				let id = env.R.idFromName(path[1].slice(1));
+				let id = env.R.idFromString(path[1]);
 				let r = env.R.get(id);
 				return r.fetch(request);
 			}
