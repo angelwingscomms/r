@@ -57,7 +57,6 @@ export default {
 		const hash = await crypto.subtle.digest('SHA-256', material);
 		const key = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 		const exp = await decrypt(env, url.searchParams.get('s') ?? '', url.searchParams.get('iv') ?? '');
-		console.log('exp', exp);
 		if (Date.now() > +exp) {
 			return new Response('expired s', { status: 401 });
 		}
